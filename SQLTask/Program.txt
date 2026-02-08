@@ -1,0 +1,169 @@
+﻿using Microsoft.Data.SqlClient;
+using System;
+using System.Data.Common;
+
+namespace SQLTask;
+
+class Program
+{
+
+    static string connectionString = "Server=localhost;Database=computerStore;Trusted_Connection=True;TrustServerCertificate=True;";
+    static void Main()
+    {
+        while (true)
+        {
+            Console.Clear();
+            Console.WriteLine("Main Menu:");
+            Console.WriteLine("1. Edit categories");
+            Console.WriteLine("2. Edit components");
+            Console.WriteLine("3. Edit brands");
+            Console.WriteLine("4. Check price by date");
+            Console.WriteLine("0. Exit");
+            Console.Write("Select action: ");
+
+            string answ = Console.ReadLine();
+
+            switch (answ)
+            {
+                case "1":
+                    TableMenu("Category");
+                    break;
+                case "2":
+                    TableMenu("Component");
+                    break;
+                case "3":
+                    TableMenu("Brand");
+                    break;
+                case "4":
+
+                    break;
+                case "0":
+                    return;
+            }
+        }
+    }
+
+    static void TableMenu(string name)
+    {
+        Console.Clear();
+        Console.WriteLine("Category Options:");
+        Console.WriteLine("1. Create " + name.ToLower());
+        Console.WriteLine("2. Eddit existing " + name.ToLower());
+        Console.WriteLine("3. Delete " + name.ToLower());
+        Console.WriteLine("4. List " + name.ToLower());
+        Console.WriteLine("0. Back");
+        Console.Write("Select action: ");
+        string answ = Console.ReadLine();
+
+        switch (answ)
+        {
+            case "1":
+                if (name != "Component")
+                {
+                    CrateElements(name, "name");
+                }
+                break;
+            case "2":
+                if (name != "Component")
+                {
+                    EditElements(name, "name");
+                }
+                break;
+            case "3":
+                DeleteElements(name);
+                break;
+            case "4":
+                ListElements(name);
+                break;
+            case "0":
+                return;
+        }
+    }
+
+    static void ListElements(string TableName)
+    {
+        Console.Clear();
+        using SqlConnection conn = new(connectionString);
+        conn.Open();
+
+        SqlCommand cmd = new($"SELECT * FROM {TableName}", conn);
+        SqlDataReader reader = cmd.ExecuteReader();
+
+        while (reader.Read())
+        {
+            for (int i = 0; i < reader.FieldCount; i++)
+            {
+                Console.Write($"{reader.GetName(i)}: {reader[i]} ");
+            }
+            Console.WriteLine();
+        }
+
+        Console.WriteLine("\nPress ENTER to exit");
+        Console.ReadLine();
+    }
+
+    static void CrateElements(string TableName, string ColumnName)
+    {
+        Console.Clear();
+        using SqlConnection conn = new(connectionString);
+        conn.Open();
+
+        Console.Write($"Enter {ColumnName}: ");
+        string inp = Console.ReadLine();
+
+        SqlCommand cmd = new($"INSERT INTO {TableName} ({ColumnName}) Value {@inp}", conn);
+        cmd.ExecuteNonQuery();
+
+        Console.WriteLine("Created successfully. Press ENTER to exit");
+        Console.ReadLine();
+    }
+
+    static void EditElements(string TableName, string ColumnName)
+    {
+        Console.Clear();
+
+        Console.Write("Enter ID to edit: ");
+        int ID = Convert.ToInt32(Console.ReadLine());
+
+        Console.Write($"Enter new {ColumnName}: ");
+        string value = Console.ReadLine();
+
+        using SqlConnection conn = new(connectionString);
+        conn.Open();
+        SqlCommand cmd = new($"UPDATE {TableName} SET {ColumnName}=@value WHERE id=@id", conn);
+        cmd.Parameters.AddWithValue("@value", value);
+        cmd.Parameters.AddWithValue("@id", ID);
+        cmd.ExecuteNonQuery();
+
+        Console.WriteLine("Updated successfully. Press ENTER to exit");
+        Console.ReadLine();
+    }
+
+    static void DeleteElements(string TableName)
+    {
+        Console.Clear();
+
+        Console.Write("Enter ID to delete: ");
+        int ID = Convert.ToInt32(Console.ReadLine());
+
+
+        using SqlConnection conn = new(connectionString);
+        conn.Open();
+        SqlCommand cmd = new($"DELETE {TableName} WHERE id={ID}", conn);
+
+        Console.WriteLine("Are you shure you want to delete this? (y/n): ");
+        if (Console.ReadLine() == "y")
+        {
+            cmd.ExecuteNonQuery();
+            Console.WriteLine("Deleted successfully. Press ENTER to exit");
+            Console.ReadLine();
+        }
+        else
+        {
+            Console.WriteLine("Delete canceled. Press ENTER to exit");
+            Console.ReadLine();
+        }
+    }
+
+
+}
