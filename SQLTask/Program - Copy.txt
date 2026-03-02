@@ -59,7 +59,7 @@ class Program
         {
             case "1":
                 if (name != "Component")
-                    CreateElements(name, "name");
+                    CrateElements(name, "name");
                 else
                     CreateComponent();
                 break;
@@ -83,47 +83,74 @@ class Program
     static void ListElements(string TableName)
     {
         Console.Clear();
-        using SqlConnection conn = new(connectionString);
-        conn.Open();
-
-        SqlCommand cmd = new($"SELECT * FROM {TableName}", conn);
-        SqlDataReader reader = cmd.ExecuteReader();
-
-        while (reader.Read())
+        try
         {
-            for (int i = 0; i < reader.FieldCount; i++)
+            using SqlConnection conn = new(connectionString);
+            conn.Open();
+
+            SqlCommand cmd = new($"SELECT * FROM {TableName}", conn);
+            SqlDataReader reader = cmd.ExecuteReader();
+
+            while (reader.Read())
             {
-                Console.Write($"{reader.GetName(i)}: {reader[i]} ");
+                for (int i = 0; i < reader.FieldCount; i++)
+                {
+                    Console.Write($"{reader.GetName(i)}: {reader[i]} ");
+                }
+                Console.WriteLine();
             }
-            Console.WriteLine();
+
+            reader.Close();
+            Console.WriteLine("\nPress ENTER to exit");
+            Console.ReadLine();
         }
-        reader.Close();
-        Console.WriteLine("\nPress ENTER to exit");
-        Console.ReadLine();
-        conn.Close();
+        catch (SqlException ex)
+        {
+            Console.WriteLine("Database error: " + ex.Message);
+            Console.ReadLine();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Unexpected error: " + ex.Message);
+            Console.ReadLine();
+        }
     }
 
-    static void CreateElements(string TableName, string ColumnName)
+    static void CrateElements(string TableName, string ColumnName)
     {
         Console.Clear();
-        using SqlConnection conn = new(connectionString);
-        conn.Open();
+        try
+        {
+            using SqlConnection conn = new(connectionString);
+            conn.Open();
 
-        Console.Write($"Enter {ColumnName}: ");
-        string inp = Console.ReadLine();
+            Console.Write($"Enter {ColumnName}: ");
+            string inp = Console.ReadLine();
 
-        SqlCommand cmd = new($"INSERT INTO {TableName} ({ColumnName}) VALUES (@val)", conn);
-        cmd.Parameters.AddWithValue("@val", inp);
+            SqlCommand cmd = new($"INSERT INTO {TableName} ({ColumnName}) VALUES (@val)", conn);
+            cmd.Parameters.AddWithValue("@val", inp);
 
-        cmd.ExecuteNonQuery();
+            cmd.ExecuteNonQuery();
 
-        Console.WriteLine("Created successfully. Press ENTER to exit");
-        Console.ReadLine();
+            Console.WriteLine("Created successfully. Press ENTER to exit");
+            Console.ReadLine();
+        }
+        catch (SqlException ex)
+        {
+            Console.WriteLine("Database error: " + ex.Message);
+            Console.ReadLine();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Unexpected error: " + ex.Message);
+            Console.ReadLine();
+        }
     }
-
 
     static void EditElements(string TableName, string ColumnName)
     {
+        try
+        {
         using SqlConnection conn = new(connectionString);
         conn.Open();
         Console.Clear();
@@ -138,7 +165,12 @@ class Program
             Console.WriteLine($"{reader.GetInt32(0)} – {reader.GetString(1)}");
         }
 
-        int ID = Convert.ToInt32(Console.ReadLine());
+        if (!int.TryParse(Console.ReadLine(), out int ID))
+        {
+            Console.WriteLine("Invalid ID. Press ENTER to exit.");
+            Console.ReadLine();
+            return;
+        }
         reader.Close();
 
         Console.Write($"Enter new {ColumnName}: ");
@@ -152,6 +184,17 @@ class Program
         Console.WriteLine("Updated successfully. Press ENTER to exit");
         Console.ReadLine();
         conn.Close();
+        }
+        catch (SqlException ex)
+        {
+            Console.WriteLine("Database error: " + ex.Message);
+            Console.ReadLine();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Unexpected error: " + ex.Message);
+            Console.ReadLine();
+        }
     }
 
     static void DeleteElements(string TableName)
@@ -382,54 +425,46 @@ class Program
 
     static void GetPrices()
     {
-        Console.Clear();
-        Console.Write("Enter Date (DD.MM.YYYY): ");
-        string dateInput = Console.ReadLine();
-
-        if (!DateTime.TryParseExact(dateInput, "dd.MM.yyyy", null, System.Globalization.DateTimeStyles.None, out DateTime date))
+        Console.Write("Enter Date(DD-MM-YYYY): ");
+        if (!DateTime.TryParse(Console.ReadLine(), out DateTime date))
         {
-            Console.WriteLine("Invalid date format.");
-            Console.WriteLine("Press ENTER to exit");
+            Console.WriteLine("Invalid date format. Press ENTER to exit.");
             Console.ReadLine();
             return;
         }
 
-        using SqlConnection conn = new(connectionString);
-        conn.Open();
-
-        SqlCommand cmd = new(@"
-        SELECT 
-            c.name,
-            cp.price,
-            cp.price_date
-        FROM Component c
-        OUTER APPLY (
-            SELECT TOP 1 price, price_date
-           FROM ComponentPrice
-            WHERE component_id = c.id
-              AND price_date <= @d
-            ORDER BY price_date DESC
-        ) cp
-        ORDER BY c.name;
-        ", conn);
-
-
-        cmd.Parameters.AddWithValue("@d", date);
-
-        SqlDataReader reader = cmd.ExecuteReader();
-
-        Console.WriteLine();
-        while (reader.Read())
+        try
         {
-            string name = reader["name"].ToString();
-            string price = reader["price"] == DBNull.Value ? "No price" : reader["price"].ToString();
-            string priceDate = reader["price_date"] == DBNull.Value ? "" : $" ({reader["price_date"]})";
+            using SqlConnection conn = new(connectionString);
+            conn.Open();
 
-            Console.WriteLine($"{name} - {price}{priceDate}");
+            SqlCommand cmd = new(@"SELECT c.name, cp.price, cp.price_date 
+                           FROM ComponentPrice cp 
+                           JOIN Component c ON cp.component_id = c.id 
+                           WHERE cp.price_date = @d", conn);
+
+            cmd.Parameters.AddWithValue("@d", date);
+
+            SqlDataReader reader = cmd.ExecuteReader();
+
+            while (reader.Read())
+            {
+                Console.WriteLine($"{reader["name"]} - {reader["price"]} ({reader["price_date"]})");
+            }
+
+            reader.Close();
+            Console.WriteLine("Press ENTER to exit");
+            Console.ReadLine();
         }
-
-        Console.WriteLine("Press ENTER to exit");
-        Console.ReadLine();
+        catch (SqlException ex)
+        {
+            Console.WriteLine("Database error: " + ex.Message);
+            Console.ReadLine();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Unexpected error: " + ex.Message);
+            Console.ReadLine();
+        }
     }
-
 }
