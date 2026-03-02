@@ -21,7 +21,7 @@ class Program
             Console.WriteLine("0. Exit");
             Console.Write("Select action: ");
 
-            string answ = Console.ReadLine();
+            string answ = ReadString();
 
             switch (answ)
             {
@@ -43,6 +43,45 @@ class Program
         }
     }
 
+    static void ShowError(Exception ex)
+    {
+        Console.ForegroundColor = ConsoleColor.Red;
+        Console.WriteLine("An error occurred:");
+        Console.WriteLine(ex.Message);
+
+        Console.ResetColor();
+        Console.WriteLine("Press ENTER to continue...");
+        Console.ReadLine();
+    }
+
+
+    static int ReadInt()
+    {
+        while (true)
+        {
+            string input = Console.ReadLine();
+
+            if (int.TryParse(input, out int value))
+                return value;
+
+            Console.WriteLine("Invalid number. Try again.");
+        }
+    }
+
+    static string ReadString()
+    {
+        while (true)
+        {
+            string input = Console.ReadLine();
+
+            if (!string.IsNullOrWhiteSpace(input))
+                return input;
+
+            Console.WriteLine("Input cannot be empty.");
+        }
+    }
+
+
     static void TableMenu(string name)
     {
         Console.Clear();
@@ -53,7 +92,7 @@ class Program
         Console.WriteLine("4. List " + name.ToLower());
         Console.WriteLine("0. Back");
         Console.Write("Select action: ");
-        string answ = Console.ReadLine();
+        string answ = ReadString();
 
         switch (answ)
         {
@@ -82,350 +121,356 @@ class Program
 
     static void ListElements(string TableName)
     {
-        Console.Clear();
-        using SqlConnection conn = new(connectionString);
-        conn.Open();
-
-        SqlCommand cmd = new($"SELECT * FROM {TableName}", conn);
-        SqlDataReader reader = cmd.ExecuteReader();
-
-        while (reader.Read())
+        try
         {
-            for (int i = 0; i < reader.FieldCount; i++)
+            Console.Clear();
+            using SqlConnection conn = new(connectionString);
+            conn.Open();
+
+            SqlCommand cmd = new($"SELECT * FROM {TableName}", conn);
+            SqlDataReader reader = cmd.ExecuteReader();
+
+            while (reader.Read())
             {
-                Console.Write($"{reader.GetName(i)}: {reader[i]} ");
+                for (int i = 0; i < reader.FieldCount; i++)
+                {
+                    Console.Write($"{reader.GetName(i)}: {reader[i]} ");
+                }
+                Console.WriteLine();
             }
-            Console.WriteLine();
+            reader.Close();
+            conn.Close();
         }
-        reader.Close();
+        catch (SqlException ex)
+        {
+            ShowError(ex);
+        }
+        catch (Exception ex)
+        {
+            ShowError(ex);
+        }
         Console.WriteLine("\nPress ENTER to exit");
         Console.ReadLine();
-        conn.Close();
     }
 
     static void CreateElements(string TableName, string ColumnName)
     {
-        Console.Clear();
-        using SqlConnection conn = new(connectionString);
-        conn.Open();
+        try
+        {
+            Console.Clear();
+            using SqlConnection conn = new(connectionString);
+            conn.Open();
 
-        Console.Write($"Enter {ColumnName}: ");
-        string inp = Console.ReadLine();
+            Console.Write($"Enter {ColumnName}: ");
+            string inp = ReadString();
 
-        SqlCommand cmd = new($"INSERT INTO {TableName} ({ColumnName}) VALUES (@val)", conn);
-        cmd.Parameters.AddWithValue("@val", inp);
+            SqlCommand cmd = new($"INSERT INTO {TableName} ({ColumnName}) VALUES (@val)", conn);
+            cmd.Parameters.AddWithValue("@val", inp);
 
-        cmd.ExecuteNonQuery();
+            cmd.ExecuteNonQuery();
 
-        Console.WriteLine("Created successfully. Press ENTER to exit");
-        Console.ReadLine();
+            Console.WriteLine("Created successfully. Press ENTER to exit");
+            Console.ReadLine();
+        }
+        catch (SqlException ex)
+        {
+            ShowError(ex);
+        }
+        catch (Exception ex)
+        {
+            ShowError(ex);
+        }
     }
 
 
     static void EditElements(string TableName, string ColumnName)
     {
-        using SqlConnection conn = new(connectionString);
-        conn.Open();
-        Console.Clear();
-
-        Console.Write("Choose an ID to edit: ");
-
-        SqlCommand cmd = new($"Select id, name From {TableName}", conn);
-        SqlDataReader reader = cmd.ExecuteReader();
-
-        while (reader.Read())
+        try
         {
-            Console.WriteLine($"{reader.GetInt32(0)} – {reader.GetString(1)}");
+            using SqlConnection conn = new(connectionString);
+            conn.Open();
+            Console.Clear();
+
+            Console.Write("Choose an ID to edit: ");
+
+            SqlCommand cmd = new($"Select id, name From {TableName}", conn);
+            SqlDataReader reader = cmd.ExecuteReader();
+
+            while (reader.Read())
+            {
+                Console.WriteLine($"{reader.GetInt32(0)} – {reader.GetString(1)}");
+            }
+
+            int ID = ReadInt();
+            reader.Close();
+
+            Console.Write($"Enter new {ColumnName}: ");
+            string value = ReadString();
+
+            cmd = new($"UPDATE {TableName} SET {ColumnName}=@value WHERE id=@id", conn);
+            cmd.Parameters.AddWithValue("@value", value);
+            cmd.Parameters.AddWithValue("@id", ID);
+            cmd.ExecuteNonQuery();
+
+            conn.Close();
         }
-
-        int ID = Convert.ToInt32(Console.ReadLine());
-        reader.Close();
-
-        Console.Write($"Enter new {ColumnName}: ");
-        string value = Console.ReadLine();
-
-        cmd = new($"UPDATE {TableName} SET {ColumnName}=@value WHERE id=@id", conn);
-        cmd.Parameters.AddWithValue("@value", value);
-        cmd.Parameters.AddWithValue("@id", ID);
-        cmd.ExecuteNonQuery();
-
+        catch (SqlException ex)
+        {
+            ShowError(ex);
+        }
+        catch (Exception ex)
+        {
+            ShowError(ex);
+        }
         Console.WriteLine("Updated successfully. Press ENTER to exit");
         Console.ReadLine();
-        conn.Close();
     }
 
     static void DeleteElements(string TableName)
     {
-        using SqlConnection conn = new(connectionString);
-        conn.Open();
-        Console.Clear();
-
-        Console.Write("Choose an ID to delete");
-
-        SqlCommand cmd = new($"Select id, name From {TableName}", conn);
-        SqlDataReader reader = cmd.ExecuteReader();
-
-        while (reader.Read())
+        try
         {
-            Console.WriteLine($"{reader.GetInt32(0)} – {reader.GetString(1)}");
+            using SqlConnection conn = new(connectionString);
+            conn.Open();
+            Console.Clear();
+
+            Console.Write("Choose an ID to delete");
+
+            SqlCommand cmd = new($"Select id, name From {TableName}", conn);
+            SqlDataReader reader = cmd.ExecuteReader();
+
+            while (reader.Read())
+            {
+                Console.WriteLine($"{reader.GetInt32(0)} – {reader.GetString(1)}");
+            }
+
+            int ID = ReadInt();
+
+            reader.Close();
+
+            cmd = new($"DELETE {TableName} WHERE id=@id", conn);
+            cmd.Parameters.AddWithValue("@id", ID);
+
+            Console.WriteLine("Are you sure you want to delete this? (y/n): ");
+            if (ReadString() == "y")
+            {
+                cmd.ExecuteNonQuery();
+                Console.WriteLine("Deleted successfully. Press ENTER to exit");
+                Console.ReadLine();
+            }
+            else
+            {
+                Console.WriteLine("Delete canceled. Press ENTER to exit");
+                Console.ReadLine();
+            }
+            conn.Close();
         }
-
-        int ID = Convert.ToInt32(Console.ReadLine());
-
-        reader.Close();
-
-        cmd = new($"DELETE {TableName} WHERE id=@id", conn);
-        cmd.Parameters.AddWithValue("@id", ID);
-
-        Console.WriteLine("Are you sure you want to delete this? (y/n): ");
-        if (Console.ReadLine() == "y")
+        catch (SqlException ex)
         {
-            cmd.ExecuteNonQuery();
-            Console.WriteLine("Deleted successfully. Press ENTER to exit");
-            Console.ReadLine();
+            ShowError(ex);
         }
-        else
+        catch (Exception ex)
         {
-            Console.WriteLine("Delete canceled. Press ENTER to exit");
-            Console.ReadLine();
+            ShowError(ex);
         }
-        conn.Close();
     }
 
     static void CreateComponent()
     {
-        using SqlConnection conn = new(connectionString);
-        conn.Open();
-
-        SqlCommand cmd = new("SELECT id, name FROM Category ORDER BY id", conn);
-        SqlDataReader reader = cmd.ExecuteReader();
-
-        string name, description;
-        int categoryId, brandId;
-        Console.Clear();
-        Console.Write("Enter the product name: ");
-        name = Console.ReadLine();
-        Console.Write("Enter the product description: ");
-        description = Console.ReadLine();
-        Console.WriteLine("Choose one of these product categories");
-
-        while (reader.Read())
+        try
         {
-            Console.WriteLine($"{reader.GetInt32(0)} – {reader.GetString(1)}");
-        }
+            using SqlConnection conn = new(connectionString);
+            conn.Open();
 
-        categoryId = Convert.ToInt32(Console.ReadLine());
-        reader.Close();
+            SqlCommand cmd = new("SELECT id, name FROM Category ORDER BY id", conn);
+            SqlDataReader reader = cmd.ExecuteReader();
 
-        Console.WriteLine("Choose one of these brands");
+            string name, description;
+            int categoryId, brandId;
+            Console.Clear();
+            Console.Write("Enter the product name: ");
+            name = ReadString();
+            Console.Write("Enter the product description: ");
+            description = ReadString();
+            Console.WriteLine("Choose one of these product categories");
 
-        cmd = new("SELECT id, name FROM Brand ORDER BY id", conn);
-        reader = cmd.ExecuteReader();
-        Console.WriteLine("Available Brands:");
-        while (reader.Read())
-        {
-            Console.WriteLine($"{reader.GetInt32(0)} – {reader.GetString(1)}");
-        }
+            while (reader.Read())
+            {
+                Console.WriteLine($"{reader.GetInt32(0)} – {reader.GetString(1)}");
+            }
 
-        brandId = Convert.ToInt32(Console.ReadLine());
-        reader.Close();
-
-        cmd = new("INSERT INTO Component (name, brand_id, description, category_id) VALUES (@n,@b,@d,@c)", conn);
-
-        cmd.Parameters.AddWithValue("@n", name);
-        cmd.Parameters.AddWithValue("@b", brandId);
-        cmd.Parameters.AddWithValue("@d", description);
-        cmd.Parameters.AddWithValue("@c", categoryId);
-
-
-        Console.WriteLine("are you sure you want to add this product:");
-        Console.WriteLine($"{name} | {description} | category: {categoryId} | brand: {brandId} (y/n)");
-        if (Console.ReadLine() == "y")
-        {
-            cmd.ExecuteNonQuery();
-            Console.WriteLine("Component created. Press ENTER to exit");
+            categoryId = ReadInt();
             reader.Close();
+
+            Console.WriteLine("Choose one of these brands");
+
+            cmd = new("SELECT id, name FROM Brand ORDER BY id", conn);
+            reader = cmd.ExecuteReader();
+            Console.WriteLine("Available Brands:");
+            while (reader.Read())
+            {
+                Console.WriteLine($"{reader.GetInt32(0)} – {reader.GetString(1)}");
+            }
+
+            brandId = ReadInt();
+            reader.Close();
+
+            cmd = new("INSERT INTO Component (name, brand_id, description, category_id) VALUES (@n,@b,@d,@c)", conn);
+
+            cmd.Parameters.AddWithValue("@n", name);
+            cmd.Parameters.AddWithValue("@b", brandId);
+            cmd.Parameters.AddWithValue("@d", description);
+            cmd.Parameters.AddWithValue("@c", categoryId);
+
+
+            Console.WriteLine("are you sure you want to add this product:");
+            Console.WriteLine($"{name} | {description} | category: {categoryId} | brand: {brandId} (y/n)");
+            if (ReadString() == "y")
+            {
+                cmd.ExecuteNonQuery();
+                Console.WriteLine("Component created. Press ENTER to exit");
+                reader.Close();
+            }
+            else
+            {
+                Console.WriteLine("Component creation canceled. Press ENTER to exit");
+            }
+            conn.Close();
         }
-        else
+        catch (SqlException ex)
         {
-            Console.WriteLine("Component creation canceled. Press ENTER to exit");
+            ShowError(ex);
+        }
+        catch (Exception ex)
+        {
+            ShowError(ex);
         }
 
         Console.ReadLine();
-        conn.Close();
     }
 
     static void EditComponent()
     {
         Console.Clear();
-        using SqlConnection conn = new(connectionString);
-        conn.Open();
+        Console.WriteLine("=== Edit Component ===");
 
-        string name, description;
-        int categoryId, brandId, componentId;
-
-        //ask for product id
-        Console.WriteLine("Choose the product ID you want to edit");
-
-        SqlCommand cmd = new("SELECT id, name FROM Component ORDER BY id", conn);
-        SqlDataReader reader = cmd.ExecuteReader();
-
-        while (reader.Read())
+        try
         {
-            Console.WriteLine($"{reader.GetInt32(0)} – {reader.GetString(1)}");
+            Console.WriteLine("Enter component ID: ");
+            int id = ReadInt();
+
+            using SqlConnection conn = new(connectionString);
+            conn.Open();
+
+            // Check if component exists
+            SqlCommand checkCmd = new("SELECT COUNT(*) FROM Component WHERE id = @id", conn);
+            checkCmd.Parameters.AddWithValue("@id", id);
+
+            int exists = (int)checkCmd.ExecuteScalar();
+            if (exists == 0)
+            {
+                Console.WriteLine("Component not found.");
+                Console.WriteLine("Press ENTER to return...");
+                Console.ReadLine();
+                return;
+            }
+
+            Console.WriteLine("Enter new name: ");
+            string newName = ReadString();
+
+            SqlCommand updateCmd = new(@"
+            UPDATE Component
+            SET name = @name
+            WHERE id = @id
+        ", conn);
+
+            updateCmd.Parameters.AddWithValue("@name", newName);
+            updateCmd.Parameters.AddWithValue("@id", id);
+
+            int rows = updateCmd.ExecuteNonQuery();
+
+            if (rows == 1)
+            {
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine("Component updated successfully.");
+                Console.ResetColor();
+            }
+            else
+            {
+                Console.WriteLine("Update failed.");
+            }
         }
-        reader.Close();
-
-        componentId = Convert.ToInt32(Console.ReadLine());
-
-        //load old data
-        cmd = new SqlCommand("SELECT name, description, category_id, brand_id FROM Component WHERE id=@id", conn);
-        cmd.Parameters.AddWithValue("@id", componentId);
-
-        reader = cmd.ExecuteReader();
-        if (!reader.Read())
+        catch (SqlException ex)
         {
-            Console.WriteLine("Component not found.");
-            reader.Close();
-            Console.ReadLine();
-            return;
+            ShowError(ex);
         }
-
-        string oldName = reader.GetString(0);
-        string oldDescription = reader.GetString(1);
-        int oldCategoryId = reader.GetInt32(2);
-        int oldBrandId = reader.GetInt32(3);
-        reader.Close();
-
-        //ask for rest of the data needed
-        //name
-        Console.WriteLine($"Current name: {oldName}");
-        Console.WriteLine("Enter the new product name(leave empty to keep old name): ");
-        name = Console.ReadLine();
-        if (string.IsNullOrWhiteSpace(name)) name = oldName;
-
-        //description
-        Console.WriteLine($"Current description: {oldDescription}");
-        Console.WriteLine("Enter the new product description(leave empty to keep old name): ");
-        description = Console.ReadLine();
-        if (string.IsNullOrWhiteSpace(description)) description = oldDescription;
-
-        //category ID
-        Console.WriteLine($"Current category ID: {oldCategoryId}");
-        Console.WriteLine("Choose the new product category ID(leave empty to keep old name): ");
-
-        cmd = new("SELECT id, name FROM Category ORDER BY id", conn);
-        reader = cmd.ExecuteReader();
-        while (reader.Read())
+        catch (Exception ex)
         {
-            Console.WriteLine($"{reader.GetInt32(0)} – {reader.GetString(1)}");
-        }
-        reader.Close();
-
-        string catID = Console.ReadLine();
-        if (string.IsNullOrWhiteSpace(catID))
-        {
-            categoryId = oldCategoryId;
-        }
-        else
-        {
-            categoryId = Convert.ToInt32(catID);
+            ShowError(ex);
         }
 
-        //Brand ID
-        Console.WriteLine($"Current Brand ID: {oldBrandId}");
-        Console.WriteLine("Choose the new brand ID(leave empty to keep old name): ");
-
-        cmd = new("SELECT id, name FROM Brand ORDER BY id", conn);
-        reader = cmd.ExecuteReader();
-        while (reader.Read())
-        {
-            Console.WriteLine($"{reader.GetInt32(0)} – {reader.GetString(1)}");
-        }
-        reader.Close();
-
-        string brID = Console.ReadLine();
-        if (string.IsNullOrWhiteSpace(brID))
-        {
-            brandId = oldBrandId;
-        }
-        else
-        {
-            brandId = int.Parse(catID);
-        }
-        //Update product data
-
-        cmd = new("UPDATE Component SET name=@name, brand_id=@brandID, description=@description, category_id=@categoryID WHERE id=@id", conn);
-
-        cmd.Parameters.AddWithValue("@name", name);
-        cmd.Parameters.AddWithValue("@brandID", brandId);
-        cmd.Parameters.AddWithValue("@description", description);
-        cmd.Parameters.AddWithValue("@categoryID", categoryId);
-        cmd.Parameters.AddWithValue("@id", componentId);
-
-
-        Console.WriteLine("are you sure you want to commit these changes to this product:");
-        Console.WriteLine($"{name} | {description} | category: {categoryId} | brand: {brandId} (y/n)");
-        if (Console.ReadLine() == "y")
-        {
-            cmd.ExecuteNonQuery();
-            Console.WriteLine("Component changes applied. Press ENTER to exit");
-            reader.Close();
-        }
-        else
-        {
-            Console.WriteLine("Component changes canceled. Press ENTER to exit");
-        }
+        Console.WriteLine("Press ENTER to return...");
         Console.ReadLine();
-        conn.Close();
     }
+
 
     static void GetPrices()
     {
-        Console.Clear();
-        Console.Write("Enter Date (DD.MM.YYYY): ");
-        string dateInput = Console.ReadLine();
-
-        if (!DateTime.TryParseExact(dateInput, "dd.MM.yyyy", null, System.Globalization.DateTimeStyles.None, out DateTime date))
+        try
         {
-            Console.WriteLine("Invalid date format.");
-            Console.WriteLine("Press ENTER to exit");
-            Console.ReadLine();
-            return;
+            Console.Clear();
+            Console.Write("Enter Date (DD.MM.YYYY): ");
+            string dateInput = ReadString();
+
+            if (!DateTime.TryParseExact(dateInput, "dd.MM.yyyy", null, System.Globalization.DateTimeStyles.None, out DateTime date))
+            {
+                Console.WriteLine("Invalid date format.");
+                Console.WriteLine("Press ENTER to exit");
+                Console.ReadLine();
+                return;
+            }
+
+            using SqlConnection conn = new(connectionString);
+            conn.Open();
+
+            SqlCommand cmd = new(@"
+            SELECT 
+                c.name,
+                cp.price,
+                cp.price_date
+            FROM Component c
+            OUTER APPLY (
+                SELECT TOP 1 price, price_date
+               FROM ComponentPrice
+                WHERE component_id = c.id
+                  AND price_date <= @d
+                ORDER BY price_date DESC
+            ) cp
+            ORDER BY c.name;
+            ", conn);
+
+
+            cmd.Parameters.AddWithValue("@d", date);
+
+            SqlDataReader reader = cmd.ExecuteReader();
+
+            Console.WriteLine();
+            while (reader.Read())
+            {
+                string name = reader["name"].ToString();
+                string price = reader["price"] == DBNull.Value ? "No price" : reader["price"].ToString();
+                string priceDate = reader["price_date"] == DBNull.Value ? "" : $" ({reader["price_date"]})";
+
+                Console.WriteLine($"{name} - {price}{priceDate}");
+            }
         }
-
-        using SqlConnection conn = new(connectionString);
-        conn.Open();
-
-        SqlCommand cmd = new(@"
-        SELECT 
-            c.name,
-            cp.price,
-            cp.price_date
-        FROM Component c
-        OUTER APPLY (
-            SELECT TOP 1 price, price_date
-           FROM ComponentPrice
-            WHERE component_id = c.id
-              AND price_date <= @d
-            ORDER BY price_date DESC
-        ) cp
-        ORDER BY c.name;
-        ", conn);
-
-
-        cmd.Parameters.AddWithValue("@d", date);
-
-        SqlDataReader reader = cmd.ExecuteReader();
-
-        Console.WriteLine();
-        while (reader.Read())
+        catch (SqlException ex)
         {
-            string name = reader["name"].ToString();
-            string price = reader["price"] == DBNull.Value ? "No price" : reader["price"].ToString();
-            string priceDate = reader["price_date"] == DBNull.Value ? "" : $" ({reader["price_date"]})";
-
-            Console.WriteLine($"{name} - {price}{priceDate}");
+            ShowError(ex);
+        }
+        catch (Exception ex)
+        {
+            ShowError(ex);
         }
 
         Console.WriteLine("Press ENTER to exit");
